@@ -86,6 +86,9 @@ namespace UnityEssentials
 
             try
             {
+                if (_renderTexture == null || !_renderTexture.IsCreated())
+                    return;
+
                 float totalLuminance = _readbackRequest.GetData<uint>()[0];
 
                 // Calculate average luminance
