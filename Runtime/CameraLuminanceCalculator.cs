@@ -78,7 +78,6 @@ namespace UnityEssentials
 
             if (_readbackRequest.hasError)
             {
-                Debug.LogWarning("GPU readback error");
                 _processing = false;
 
                 return;
