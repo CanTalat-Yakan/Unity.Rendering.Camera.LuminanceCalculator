@@ -7,17 +7,18 @@ namespace UnityEssentials
     [RequireComponent(typeof(Camera))]
     public class CameraLuminanceCalculator : MonoBehaviour
     {
+        public float Luminance => _luminance;
+        [ReadOnly, SerializeField] private float _luminance;
+
         private Camera _camera;
         private RenderTexture _renderTexture;
         private ComputeShader _luminanceShader;
         private ComputeBuffer _resultBuffer;
         private AsyncGPUReadbackRequest _readbackRequest;
+        private int _kernelHandle;
         private bool _processing = false;
 
-        private int _kernelHandle;
-        private const int SCALE_FACTOR = 1000; // Must match HLSL
-
-        [ReadOnly] public float Luminance;
+        private const int ScaleFactor = 1000; // Must match HLSL
 
         public void Awake()
         {
@@ -89,11 +90,11 @@ namespace UnityEssentials
 
                 // Calculate average luminance
                 int pixelCount = (_renderTexture.width * _renderTexture.height) / 4;
-                float averageLuminance = totalLuminance / (float)(SCALE_FACTOR * pixelCount);
+                float averageLuminance = totalLuminance / (float)(ScaleFactor * pixelCount);
 
-                averageLuminance = Math.Clamp((float)(Math.Truncate(averageLuminance * SCALE_FACTOR) / SCALE_FACTOR), 0.0f, 1.0f);
+                averageLuminance = Math.Clamp((float)(Math.Truncate(averageLuminance * ScaleFactor) / ScaleFactor), 0.0f, 1.0f);
 
-                Luminance = averageLuminance;
+                _luminance = averageLuminance;
             }
             catch (Exception e) { Debug.LogWarning($"Luminance calculation error: {e.Message}"); }
             finally { _processing = false; }
