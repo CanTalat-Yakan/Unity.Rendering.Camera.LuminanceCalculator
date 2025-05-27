@@ -1,0 +1,17 @@
+{
+    "name": "UnityEssentials.CameraLuminanceCalculator",
+    "rootNamespace": "UnityEssentials",
+    "references": [
+        "GUID:fd1e7b63e0e7d634db53519cc860fe3a",
+        "GUID:9a6bb239ccccf6645b460348af49b773"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

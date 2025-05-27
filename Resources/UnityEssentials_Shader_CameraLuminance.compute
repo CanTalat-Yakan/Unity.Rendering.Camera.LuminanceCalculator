@@ -1,0 +1,46 @@
+#pragma kernel CalculateLuminance
+
+Texture2D<float4> Source;
+RWStructuredBuffer<uint> Result;
+
+SamplerState sampler_point_clamp;
+
+float3 SRGBToLinear(float3 c)
+{
+    return (c > 0.04045) ? pow((c + 0.055) / 1.055, 2.4) : c / 12.92;
+}
+
+float3 LinearToSRGB(float3 c)
+{
+    return (c <= 0.0031308) ? c * 12.92 : 1.055 * pow(abs(c), 1.0 / 2.4) - 0.055;
+}
+
+float RGBToLuminance(float3 linearRGB)
+{
+    return dot(linearRGB, float3(0.2126, 0.7152, 0.0722));
+}
+
+#define SCALE_FACTOR 1000
+
+[numthreads(8, 8, 1)]
+void CalculateLuminance(uint3 id : SV_DispatchThreadID)
+{
+    uint width, height, numberOfLevels;
+    Source.GetDimensions(0, width, height, numberOfLevels);
+    
+    // Skip every other pixel
+    uint2 samplePos = id.xy * 2;
+    // Center the sampling area
+    //uint2 samplePos = id.xy + uint2(width/4, height/4);
+    if (samplePos.x >= width || samplePos.y >= height)
+        return;
+    
+    float2 uv = (float2(samplePos.x, samplePos.y) + 0.5) / float2(width, height);
+    float4 color = Source.SampleLevel(sampler_point_clamp, uv, 0);
+    
+    float3 correctedColor = LinearToSRGB(color.rgb);
+    float luminance = RGBToLuminance(correctedColor);
+    uint luminanceScaled = luminance * SCALE_FACTOR;
+
+    InterlockedAdd(Result[0], luminanceScaled);
+}

@@ -1,0 +1,105 @@
+using System;
+using UnityEngine;
+using UnityEngine.Rendering;
+
+namespace UnityEssentials
+{
+    [RequireComponent(typeof(Camera))]
+    public class CameraLuminanceCalculator : MonoBehaviour
+    {
+        private Camera _camera;
+        private RenderTexture _renderTexture;
+        private ComputeShader _luminanceShader;
+        private ComputeBuffer _resultBuffer;
+        private AsyncGPUReadbackRequest _readbackRequest;
+        private bool _processing = false;
+
+        private int _kernelHandle;
+        private const int SCALE_FACTOR = 1000; // Must match HLSL
+
+        [ReadOnly] public float Luminance;
+
+        public void Awake()
+        {
+            _camera = GetComponent<Camera>();
+            _luminanceShader = ResourceLoader.LoadResource<ComputeShader>("UnityEssentials_Shader_CameraLuminance");
+            _kernelHandle = _luminanceShader.FindKernel("CalculateLuminance");
+            _resultBuffer = new ComputeBuffer(1, sizeof(uint));
+            _luminanceShader.SetBuffer(_kernelHandle, "Result", _resultBuffer);
+        }
+
+        public void OnDestroy() =>
+            _resultBuffer?.Release();
+
+        public void Update()
+        {
+            if (!_processing) CalculateLuminance();
+            else CheckAsyncRequest();
+        }
+
+        private void FetchTargetTexture()
+        {
+            if (_renderTexture != null)
+                return;
+
+            if (_camera == null || _camera.targetTexture == null)
+            {
+                Debug.LogWarning("CameraLuminanceCalculator: No target RenderTexture set on the Camera.");
+                return;
+            }
+
+            _renderTexture = _camera.targetTexture;
+        }
+
+        public void CalculateLuminance()
+        {
+            // Reset buffer
+            uint[] reset = { 0 };
+            _resultBuffer.SetData(reset);
+
+            if (_renderTexture == null)
+            {
+                FetchTargetTexture();
+                return;
+            }
+
+            // Set texture and dispatch
+            _luminanceShader.SetTexture(_kernelHandle, "Source", _renderTexture);
+            int threadGroupsX = Mathf.CeilToInt(_renderTexture.width / 8f);
+            int threadGroupsY = Mathf.CeilToInt(_renderTexture.height / 8f);
+            _luminanceShader.Dispatch(_kernelHandle, threadGroupsX / 2, threadGroupsY / 2, 1);
+
+            _readbackRequest = AsyncGPUReadback.Request(_resultBuffer);
+            _processing = true;
+        }
+
+        private void CheckAsyncRequest()
+        {
+            if (!_readbackRequest.done)
+                return;
+
+            if (_readbackRequest.hasError)
+            {
+                Debug.LogWarning("GPU readback error");
+                _processing = false;
+
+                return;
+            }
+
+            try
+            {
+                float totalLuminance = _readbackRequest.GetData<uint>()[0];
+
+                // Calculate average luminance
+                int pixelCount = (_renderTexture.width * _renderTexture.height) / 4;
+                float averageLuminance = totalLuminance / (float)(SCALE_FACTOR * pixelCount);
+
+                averageLuminance = Math.Clamp((float)(Math.Truncate(averageLuminance * SCALE_FACTOR) / SCALE_FACTOR), 0.0f, 1.0f);
+
+                Luminance = averageLuminance;
+            }
+            catch (Exception e) { Debug.LogWarning($"Luminance calculation error: {e.Message}"); }
+            finally { _processing = false; }
+        }
+    }
+}
