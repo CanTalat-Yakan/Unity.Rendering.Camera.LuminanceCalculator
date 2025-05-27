@@ -43,10 +43,7 @@ namespace UnityEssentials
                 return;
 
             if (_camera == null || _camera.targetTexture == null)
-            {
-                Debug.LogWarning("CameraLuminanceCalculator: No target RenderTexture set on the Camera.");
                 return;
-            }
 
             _renderTexture = _camera.targetTexture;
         }
