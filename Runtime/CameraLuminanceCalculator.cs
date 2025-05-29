@@ -79,7 +79,6 @@ namespace UnityEssentials
             if (_readbackRequest.hasError)
             {
                 _processing = false;
-
                 return;
             }
 
