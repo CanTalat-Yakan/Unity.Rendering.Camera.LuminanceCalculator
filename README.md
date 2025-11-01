@@ -46,7 +46,7 @@ Average scene luminance is computed from the camera’s target texture each fram
   - No dependency on Post‑Processing
 
 ## Requirements
-- Unity 6000.0+ (per package manifest)
+- Unity 6000.0+
 - A Camera with a valid `RenderTexture` assigned to `camera.targetTexture`
 - A compute shader resource available via Resources loading
   - Expected resource name: `UnityEssentials_Shader_CameraLuminance`
