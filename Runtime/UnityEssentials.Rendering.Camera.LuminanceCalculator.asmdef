@@ -1,5 +1,5 @@
 {
-    "name": "UnityEssentials.CameraLuminanceCalculator",
+    "name": "UnityEssentials.Rendering.Camera.LuminanceCalculator",
     "rootNamespace": "UnityEssentials",
     "references": [
         "GUID:fd1e7b63e0e7d634db53519cc860fe3a",
