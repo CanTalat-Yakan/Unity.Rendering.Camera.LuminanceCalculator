@@ -16,26 +16,60 @@ namespace UnityEssentials
         private ComputeBuffer _resultBuffer;
         private AsyncGPUReadbackRequest _readbackRequest;
         private int _kernelHandle;
+        private bool _isInitialized;
+        private bool _hasLoggedInitFailure;
         private bool _processing = false;
 
         private const int ScaleFactor = 1000; // Must match HLSL
 
         public void Awake()
         {
-            _camera = GetComponent<Camera>();
-            _luminanceShader = AssetResolver.TryGet<ComputeShader>("UnityEssentials_Shader_CameraLuminance");
-            _kernelHandle = _luminanceShader.FindKernel("CalculateLuminance");
-            _resultBuffer = new ComputeBuffer(1, sizeof(uint));
-            _luminanceShader.SetBuffer(_kernelHandle, "Result", _resultBuffer);
+            TryInitialize();
         }
 
-        public void OnDestroy() =>
+        public void OnDestroy()
+        {
             _resultBuffer?.Release();
+            _resultBuffer = null;
+            _isInitialized = false;
+        }
 
         public void Update()
         {
+            if (!_isInitialized && !TryInitialize())
+                return;
+
             if (!_processing) CalculateLuminance();
             else CheckAsyncRequest();
+        }
+
+        private bool TryInitialize()
+        {
+            if (_isInitialized)
+                return true;
+
+            _camera ??= GetComponent<Camera>();
+            _luminanceShader ??= AssetResolver.TryGet<ComputeShader>("UnityEssentials_Shader_CameraLuminance");
+
+            if (_camera == null || _luminanceShader == null)
+            {
+                if (!_hasLoggedInitFailure)
+                {
+                    Debug.LogWarning("CameraLuminanceCalculator initialization failed: camera or luminance compute shader is missing.", this);
+                    _hasLoggedInitFailure = true;
+                }
+
+                return false;
+            }
+
+            _kernelHandle = _luminanceShader.FindKernel("CalculateLuminance");
+            _resultBuffer?.Release();
+            _resultBuffer = new ComputeBuffer(1, sizeof(uint));
+            _luminanceShader.SetBuffer(_kernelHandle, "Result", _resultBuffer);
+
+            _isInitialized = true;
+            _hasLoggedInitFailure = false;
+            return true;
         }
 
         private void FetchTargetTexture()
@@ -51,6 +85,9 @@ namespace UnityEssentials
 
         public void CalculateLuminance()
         {
+            if (!_isInitialized || _resultBuffer == null || _luminanceShader == null)
+                return;
+
             // Reset buffer
             uint[] reset = { 0 };
             _resultBuffer.SetData(reset);
